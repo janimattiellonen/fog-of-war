@@ -91,3 +91,11 @@ Create a script `scripts/png-to-map-ts` that takes a path to a PNG file and pars
 Add the script to package.json under scripts.
 
 I have included a simple PNG file in docs/example.png.
+
+
+
+## Changes to demo3.map
+
+Update map `/Users/janimattiellonen/Documents/Development/fog-of-war/public/maps/demo3.map` and randomly replace existing floor tiles (F00) with either F01 or F02 
+
+I also added new wall (edge) tiles.
