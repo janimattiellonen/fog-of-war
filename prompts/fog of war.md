@@ -53,4 +53,41 @@ If I have a too old node installed, set up an .nvmrc with proper Node version. I
 
 ## Improvements
 
-- increase the visible area to 300px 
+- increase the visible area to 300px
+- the edge of the visible area should be 15px thick and blurry 
+
+
+## Edges
+
+Use public/assets/tiles/brick_dark2.png to render the edges. I will want to use dedicated images as tiles in the grid you created so take this into consideration when creating code for rendering the edges.
+
+
+## Floor
+
+Use public/assets/tiles/dirt1.png as floor. 
+
+
+## Map generator
+
+Enter plan mode.
+
+Current version runs smoothly and I can freely move the character within the edges. However, the content is boring. There are no variations of any sort. I could ask you to randomly generate a map, but I want to be able to easilly generate the map. Suggest an easy format for creating fairly big maps. Each map contains different tiles. Currently only two types of tiles: edges and floors. Each type is represented by a single image. I'd like to be able to use different images for floor and edge and other types (grass, mud, roads, paths, water, doors, monsters, etc) so we need some kind of classification.
+
+For example if we have class FLOOR, I can add more floor images when required.
+
+The format should be editable with a text editor and the map should preferrably be easy to understand. We don't know how many items there will be in each class (door, edge, floor, etc) so the format must support more than 10 items / class.
+
+
+
+## PNG to map
+
+#302721 = W00
+#8B6916 = F00
+
+A tile in the map equals 10x10 in the PNG image. Thus, 500x500 image equals to 50 x 50 tiles map.
+
+Create a script `scripts/png-to-map-ts` that takes a path to a PNG file and parses it for the colors mentioned above and converts the image into a MAP file. The generated MAP file is stored in the same directory where the PNG file is read from. Name the MAP file `MAP-[DD-MM-yyyy-hh-mm-ss].map`.
+
+Add the script to package.json under scripts.
+
+I have included a simple PNG file in docs/example.png.

@@ -1,7 +1,7 @@
 import { type PlayerState, createPlayer, movePlayer } from './player';
 import { type Direction } from './input';
 import { type TileMap, createTileMapFromParsed } from './tiles';
-import { parseMap } from './mapParser';
+import { parseTileConfig, parseMap } from './mapParser';
 import { render } from './renderer';
 
 export interface GameState {
@@ -9,10 +9,15 @@ export interface GameState {
   tileMap: TileMap;
 }
 
-export async function loadGameState(mapUrl: string): Promise<GameState> {
-  const response = await fetch(mapUrl);
-  const text = await response.text();
-  const parsed = parseMap(text);
+export async function loadGameState(mapUrl: string, configUrl = '/maps/tiles.conf'): Promise<GameState> {
+  const [configResponse, mapResponse] = await Promise.all([
+    fetch(configUrl),
+    fetch(mapUrl),
+  ]);
+  const configText = await configResponse.text();
+  const mapText = await mapResponse.text();
+  const config = parseTileConfig(configText);
+  const parsed = parseMap(mapText, config);
   const tileMap = createTileMapFromParsed(parsed);
   const player = createPlayer(parsed.widthInPixels, parsed.heightInPixels);
   return { player, tileMap };

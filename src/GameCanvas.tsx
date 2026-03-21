@@ -47,7 +47,7 @@ export default function GameCanvas() {
     let animationId: number;
     let cancelled = false;
 
-    loadGameState('/maps/demo.map').then((state) => {
+    loadGameState('/maps/demo3.map').then((state) => {
       if (cancelled) {
         return;
       }

@@ -11,9 +11,12 @@ export interface TileDef {
   image: string;
 }
 
-export interface ParsedMap {
+export interface TileConfig {
   classes: Record<string, TileClass>;
   tiles: Record<string, TileDef>;
+}
+
+export interface ParsedMap extends TileConfig {
   grid: string[][];
   widthInTiles: number;
   heightInTiles: number;
@@ -21,12 +24,57 @@ export interface ParsedMap {
   heightInPixels: number;
 }
 
-export function parseMap(text: string): ParsedMap {
-  const lines = text.split('\n');
+export function parseTileConfig(text: string): TileConfig {
   const classes: Record<string, TileClass> = {};
   const tiles: Record<string, TileDef> = {};
+  parseSections(text, classes, tiles, null);
+  return { classes, tiles };
+}
+
+export function parseMap(mapText: string, config?: TileConfig): ParsedMap {
+  const classes: Record<string, TileClass> = config ? { ...config.classes } : {};
+  const tiles: Record<string, TileDef> = config ? { ...config.tiles } : {};
   const grid: string[][] = [];
 
+  parseSections(mapText, classes, tiles, grid);
+
+  if (grid.length === 0) {
+    throw new Error('Map has no grid data');
+  }
+
+  const widthInTiles = grid[0].length;
+  const heightInTiles = grid.length;
+
+  for (let row = 0; row < heightInTiles; row++) {
+    if (grid[row].length !== widthInTiles) {
+      throw new Error(`Grid row ${row} has ${grid[row].length} columns, expected ${widthInTiles}`);
+    }
+    for (let col = 0; col < widthInTiles; col++) {
+      const code = grid[row][col];
+      if (!tiles[code]) {
+        throw new Error(`Grid references unknown tile "${code}" at row ${row}, col ${col}`);
+      }
+    }
+  }
+
+  return {
+    classes,
+    tiles,
+    grid,
+    widthInTiles,
+    heightInTiles,
+    widthInPixels: widthInTiles * TILE_SIZE,
+    heightInPixels: heightInTiles * TILE_SIZE,
+  };
+}
+
+function parseSections(
+  text: string,
+  classes: Record<string, TileClass>,
+  tiles: Record<string, TileDef>,
+  grid: string[][] | null,
+) {
+  const lines = text.split('\n');
   let section: 'none' | 'classes' | 'tiles' | 'grid' = 'none';
 
   for (const raw of lines) {
@@ -74,39 +122,9 @@ export function parseMap(text: string): ParsedMap {
       tiles[code] = { code, className, image };
     }
 
-    if (section === 'grid') {
+    if (section === 'grid' && grid !== null) {
       const row = line.split(/\s+/);
       grid.push(row);
     }
   }
-
-  if (grid.length === 0) {
-    throw new Error('Map has no grid data');
-  }
-
-  const widthInTiles = grid[0].length;
-  const heightInTiles = grid.length;
-
-  // Validate all grid codes exist in tiles
-  for (let row = 0; row < heightInTiles; row++) {
-    if (grid[row].length !== widthInTiles) {
-      throw new Error(`Grid row ${row} has ${grid[row].length} columns, expected ${widthInTiles}`);
-    }
-    for (let col = 0; col < widthInTiles; col++) {
-      const code = grid[row][col];
-      if (!tiles[code]) {
-        throw new Error(`Grid references unknown tile "${code}" at row ${row}, col ${col}`);
-      }
-    }
-  }
-
-  return {
-    classes,
-    tiles,
-    grid,
-    widthInTiles,
-    heightInTiles,
-    widthInPixels: widthInTiles * TILE_SIZE,
-    heightInPixels: heightInTiles * TILE_SIZE,
-  };
 }
