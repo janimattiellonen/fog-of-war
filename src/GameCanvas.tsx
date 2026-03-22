@@ -2,12 +2,20 @@ import { useRef, useEffect, useState } from 'react';
 import { createInputState } from './game/input';
 import { type GameState, loadGameState, updateGame, renderGame } from './game/gameLoop';
 
-const DEFAULT_MAP = '/maps/demo4.map';
+interface GameCanvasProps {
+  mapFile: string;
+  paused?: boolean;
+  onEscape?: () => void;
+}
 
-export default function GameCanvas() {
+export default function GameCanvas({ mapFile, paused, onEscape }: GameCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const gameStateRef = useRef<GameState | null>(null);
   const inputRef = useRef(createInputState());
+  const pausedRef = useRef(paused);
+  pausedRef.current = paused;
+  const onEscapeRef = useRef(onEscape);
+  onEscapeRef.current = onEscape;
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -29,6 +37,11 @@ export default function GameCanvas() {
     window.addEventListener('resize', resize);
 
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onEscapeRef.current?.();
+        return;
+      }
+      if (pausedRef.current) return;
       inputRef.current.keysDown.add(e.key);
       if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '].includes(e.key)) {
         e.preventDefault();
@@ -44,7 +57,7 @@ export default function GameCanvas() {
     let animationId: number;
     let cancelled = false;
 
-    loadGameState(DEFAULT_MAP).then((state) => {
+    loadGameState(`/maps/${mapFile}`).then((state) => {
       if (cancelled) {
         return;
       }
@@ -74,7 +87,7 @@ export default function GameCanvas() {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
     };
-  }, []);
+  }, [mapFile]);
 
   return (
     <>

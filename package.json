@@ -10,6 +10,7 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "png-to-map": "tsx scripts/png-to-map.ts",
+    "generate-previews": "tsx scripts/generate-map-previews.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage"
