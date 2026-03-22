@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { EditorAction, EditorState } from '../editorState';
+import { type EditorAction, type EditorState, getDefaultFloorTile } from '../editorState';
 import { serializeMap } from '../mapSerializer';
 import { parseMap } from '../../game/mapParser';
 
@@ -32,12 +32,7 @@ export default function MapSettingsBar({ state, dispatch }: MapSettingsBarProps)
   const [newWidth, setNewWidth] = useState(30);
   const [newHeight, setNewHeight] = useState(20);
 
-  const defaultFloorTile = state.tileConfig
-    ? Object.keys(state.tileConfig.tiles).find((code) => {
-        const classLetter = code[0];
-        return state.tileConfig!.classes[classLetter] && !state.tileConfig!.classes[classLetter].solid;
-      }) ?? Object.keys(state.tileConfig.tiles)[0]
-    : null;
+  const defaultFloorTile = state.tileConfig ? getDefaultFloorTile(state.tileConfig) : null;
 
   const handleNew = () => {
     if (state.isDirty && !window.confirm('You have unsaved changes. Create a new map anyway?')) {

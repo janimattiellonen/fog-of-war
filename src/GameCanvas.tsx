@@ -1,17 +1,15 @@
-import { useRef, useEffect, useCallback, useState } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import { createInputState } from './game/input';
 import { type GameState, loadGameState, updateGame, renderGame } from './game/gameLoop';
+
+const DEFAULT_MAP = '/maps/demo4.map';
 
 export default function GameCanvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const gameStateRef = useRef<GameState | null>(null);
   const inputRef = useRef(createInputState());
   const [loading, setLoading] = useState(true);
-
-  const getViewportSize = useCallback(() => ({
-    width: window.innerWidth,
-    height: window.innerHeight,
-  }), []);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -24,9 +22,8 @@ export default function GameCanvas() {
     }
 
     const resize = () => {
-      const { width, height } = getViewportSize();
-      canvas.width = width;
-      canvas.height = height;
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
     };
     resize();
     window.addEventListener('resize', resize);
@@ -47,7 +44,7 @@ export default function GameCanvas() {
     let animationId: number;
     let cancelled = false;
 
-    loadGameState('/maps/demo4.map').then((state) => {
+    loadGameState(DEFAULT_MAP).then((state) => {
       if (cancelled) {
         return;
       }
@@ -60,11 +57,14 @@ export default function GameCanvas() {
         }
         const movement = inputRef.current.getMovement();
         gameStateRef.current = updateGame(gameStateRef.current, movement);
-        const { width, height } = getViewportSize();
-        renderGame(ctx, gameStateRef.current, width, height, time);
+        renderGame(ctx, gameStateRef.current, window.innerWidth, window.innerHeight, time);
         animationId = requestAnimationFrame(loop);
       };
       animationId = requestAnimationFrame(loop);
+    }).catch((err) => {
+      if (!cancelled) {
+        setError(err instanceof Error ? err.message : 'Failed to load map');
+      }
     });
 
     return () => {
@@ -74,22 +74,22 @@ export default function GameCanvas() {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
     };
-  }, [getViewportSize]);
+  }, []);
 
   return (
     <>
-      {loading && (
+      {(loading || error) && (
         <div style={{
           position: 'fixed',
           inset: 0,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          color: '#666',
+          color: error ? '#e85050' : '#666',
           fontSize: '18px',
           background: '#000',
         }}>
-          Loading map...
+          {error ?? 'Loading map...'}
         </div>
       )}
       <canvas

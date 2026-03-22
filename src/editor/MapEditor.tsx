@@ -1,5 +1,5 @@
 import { useReducer, useEffect, useCallback } from 'react';
-import { editorReducer, createInitialEditorState } from './editorState';
+import { editorReducer, createInitialEditorState, getDefaultFloorTile } from './editorState';
 import { loadEditorTileConfig } from './tileConfigLoader';
 import Toolbox from './components/Toolbox';
 import DrawingArea from './components/DrawingArea';
@@ -21,12 +21,7 @@ export default function MapEditor() {
     if (!window.confirm('Delete the selected tiles?')) {
       return;
     }
-    const defaultFloorTile = state.tileConfig
-      ? Object.keys(state.tileConfig.tiles).find((code) => {
-          const classLetter = code[0];
-          return state.tileConfig!.classes[classLetter] && !state.tileConfig!.classes[classLetter].solid;
-        }) ?? Object.keys(state.tileConfig.tiles)[0]
-      : null;
+    const defaultFloorTile = state.tileConfig ? getDefaultFloorTile(state.tileConfig) : null;
     if (defaultFloorTile) {
       dispatch({ type: 'DELETE_SELECTION', replacementTile: defaultFloorTile });
     }

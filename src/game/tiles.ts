@@ -42,6 +42,11 @@ export function isSolid(tileMap: TileMap, col: number, row: number): boolean {
 const imageCache = new Map<string, HTMLImageElement>();
 const loadingImages = new Set<string>();
 
+export function clearTileCache() {
+  imageCache.clear();
+  loadingImages.clear();
+}
+
 export function getTileImage(tileMap: TileMap, code: string): HTMLImageElement | null {
   const tileDef = tileMap.map.tiles[code];
   if (!tileDef) {

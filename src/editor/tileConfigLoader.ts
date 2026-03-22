@@ -7,6 +7,9 @@ export interface LoadedTileConfig {
 
 export async function loadEditorTileConfig(configUrl = '/maps/tiles.conf'): Promise<LoadedTileConfig> {
   const response = await fetch(configUrl);
+  if (!response.ok) {
+    throw new Error(`Failed to load tile config (${response.status}): ${configUrl}`);
+  }
   const text = await response.text();
   const config = parseTileConfig(text);
 

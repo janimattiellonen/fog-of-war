@@ -37,6 +37,13 @@ export type EditorAction =
   | { type: 'AUTO_RANDOM_BORDER'; wallTileCodes: string[] }
   | { type: 'MARK_SAVED' };
 
+export function getDefaultFloorTile(config: TileConfig): string | null {
+  return Object.keys(config.tiles).find((code) => {
+    const classLetter = code[0];
+    return config.classes[classLetter] && !config.classes[classLetter].solid;
+  }) ?? Object.keys(config.tiles)[0] ?? null;
+}
+
 export function createInitialEditorState(): EditorState {
   return {
     tileConfig: null,
@@ -65,152 +72,151 @@ function cloneGrid(grid: string[][]): string[][] {
 }
 
 export function editorReducer(state: EditorState, action: EditorAction): EditorState {
-  if (action.type === 'SET_TILE_CONFIG') {
-    return {
-      ...state,
-      tileConfig: action.config,
-      tileImages: action.images,
-    };
-  }
+  switch (action.type) {
+    case 'SET_TILE_CONFIG':
+      return {
+        ...state,
+        tileConfig: action.config,
+        tileImages: action.images,
+      };
 
-  if (action.type === 'NEW_MAP') {
-    return {
-      ...state,
-      grid: createGrid(action.width, action.height, action.defaultTile),
-      widthInTiles: action.width,
-      heightInTiles: action.height,
-      selection: null,
-      isDirty: false,
-      fileName: 'untitled.map',
-    };
-  }
+    case 'NEW_MAP':
+      return {
+        ...state,
+        grid: createGrid(action.width, action.height, action.defaultTile),
+        widthInTiles: action.width,
+        heightInTiles: action.height,
+        selection: null,
+        isDirty: false,
+        fileName: 'untitled.map',
+      };
 
-  if (action.type === 'LOAD_MAP') {
-    return {
-      ...state,
-      grid: action.grid,
-      widthInTiles: action.grid[0]?.length ?? 0,
-      heightInTiles: action.grid.length,
-      selection: null,
-      isDirty: false,
-      fileName: action.fileName,
-    };
-  }
+    case 'LOAD_MAP':
+      return {
+        ...state,
+        grid: action.grid,
+        widthInTiles: action.grid[0]?.length ?? 0,
+        heightInTiles: action.grid.length,
+        selection: null,
+        isDirty: false,
+        fileName: action.fileName,
+      };
 
-  if (action.type === 'PAINT_TILE') {
-    if (!state.selectedTileCode) {
-      return state;
+    case 'PAINT_TILE': {
+      if (!state.selectedTileCode) {
+        return state;
+      }
+      if (action.col < 0 || action.row < 0 || action.col >= state.widthInTiles || action.row >= state.heightInTiles) {
+        return state;
+      }
+      if (state.grid[action.row][action.col] === state.selectedTileCode) {
+        return state;
+      }
+      const newGrid = cloneGrid(state.grid);
+      newGrid[action.row][action.col] = state.selectedTileCode;
+      return { ...state, grid: newGrid, isDirty: true };
     }
-    if (action.col < 0 || action.row < 0 || action.col >= state.widthInTiles || action.row >= state.heightInTiles) {
-      return state;
-    }
-    if (state.grid[action.row][action.col] === state.selectedTileCode) {
-      return state;
-    }
-    const newGrid = cloneGrid(state.grid);
-    newGrid[action.row][action.col] = state.selectedTileCode;
-    return { ...state, grid: newGrid, isDirty: true };
-  }
 
-  if (action.type === 'PAINT_TILES') {
-    if (!state.selectedTileCode) {
-      return state;
-    }
-    const newGrid = cloneGrid(state.grid);
-    let changed = false;
-    for (const cell of action.cells) {
-      if (cell.col >= 0 && cell.row >= 0 && cell.col < state.widthInTiles && cell.row < state.heightInTiles) {
-        if (newGrid[cell.row][cell.col] !== state.selectedTileCode) {
-          newGrid[cell.row][cell.col] = state.selectedTileCode;
-          changed = true;
+    case 'PAINT_TILES': {
+      if (!state.selectedTileCode) {
+        return state;
+      }
+      const newGrid = cloneGrid(state.grid);
+      let changed = false;
+      for (const cell of action.cells) {
+        if (cell.col >= 0 && cell.row >= 0 && cell.col < state.widthInTiles && cell.row < state.heightInTiles) {
+          if (newGrid[cell.row][cell.col] !== state.selectedTileCode) {
+            newGrid[cell.row][cell.col] = state.selectedTileCode;
+            changed = true;
+          }
         }
       }
-    }
-    if (!changed) {
-      return state;
-    }
-    return { ...state, grid: newGrid, isDirty: true };
-  }
-
-  if (action.type === 'SELECT_TILE_CODE') {
-    return { ...state, selectedTileCode: action.code };
-  }
-
-  if (action.type === 'SET_TOOL') {
-    return { ...state, activeTool: action.tool, selection: action.tool !== 'select' ? null : state.selection };
-  }
-
-  if (action.type === 'SET_SELECTION') {
-    return { ...state, selection: action.selection };
-  }
-
-  if (action.type === 'DELETE_SELECTION') {
-    if (!state.selection) {
-      return state;
-    }
-    const { startCol, startRow, endCol, endRow } = normalizeSelection(state.selection);
-    const newGrid = cloneGrid(state.grid);
-    for (let row = startRow; row <= endRow; row++) {
-      for (let col = startCol; col <= endCol; col++) {
-        newGrid[row][col] = action.replacementTile;
+      if (!changed) {
+        return state;
       }
+      return { ...state, grid: newGrid, isDirty: true };
     }
-    return { ...state, grid: newGrid, selection: null, isDirty: true };
-  }
 
-  if (action.type === 'FILL_SELECTION') {
-    if (!state.selection) {
-      return state;
-    }
-    const { startCol, startRow, endCol, endRow } = normalizeSelection(state.selection);
-    const newGrid = cloneGrid(state.grid);
-    for (let row = startRow; row <= endRow; row++) {
-      for (let col = startCol; col <= endCol; col++) {
-        newGrid[row][col] = action.tileCode;
+    case 'SELECT_TILE_CODE':
+      return { ...state, selectedTileCode: action.code };
+
+    case 'SET_TOOL':
+      return { ...state, activeTool: action.tool, selection: action.tool !== 'select' ? null : state.selection };
+
+    case 'SET_SELECTION':
+      return { ...state, selection: action.selection };
+
+    case 'DELETE_SELECTION': {
+      if (!state.selection) {
+        return state;
       }
+      const { startCol, startRow, endCol, endRow } = normalizeSelection(state.selection);
+      const newGrid = cloneGrid(state.grid);
+      for (let row = startRow; row <= endRow; row++) {
+        for (let col = startCol; col <= endCol; col++) {
+          newGrid[row][col] = action.replacementTile;
+        }
+      }
+      return { ...state, grid: newGrid, selection: null, isDirty: true };
     }
-    return { ...state, grid: newGrid, selection: null, isDirty: true };
-  }
 
-  if (action.type === 'AUTO_BORDER') {
-    if (state.widthInTiles === 0 || state.heightInTiles === 0) {
+    case 'FILL_SELECTION': {
+      if (!state.selection) {
+        return state;
+      }
+      const { startCol, startRow, endCol, endRow } = normalizeSelection(state.selection);
+      const newGrid = cloneGrid(state.grid);
+      for (let row = startRow; row <= endRow; row++) {
+        for (let col = startCol; col <= endCol; col++) {
+          newGrid[row][col] = action.tileCode;
+        }
+      }
+      return { ...state, grid: newGrid, selection: null, isDirty: true };
+    }
+
+    case 'AUTO_BORDER': {
+      if (state.widthInTiles === 0 || state.heightInTiles === 0) {
+        return state;
+      }
+      const newGrid = cloneGrid(state.grid);
+      for (let col = 0; col < state.widthInTiles; col++) {
+        newGrid[0][col] = action.wallTileCode;
+        newGrid[state.heightInTiles - 1][col] = action.wallTileCode;
+      }
+      for (let row = 0; row < state.heightInTiles; row++) {
+        newGrid[row][0] = action.wallTileCode;
+        newGrid[row][state.widthInTiles - 1] = action.wallTileCode;
+      }
+      return { ...state, grid: newGrid, isDirty: true };
+    }
+
+    case 'AUTO_RANDOM_BORDER': {
+      if (state.widthInTiles === 0 || state.heightInTiles === 0 || action.wallTileCodes.length === 0) {
+        return state;
+      }
+      const codes = action.wallTileCodes;
+      const pick = () => codes[Math.floor(Math.random() * codes.length)];
+      const newGrid = cloneGrid(state.grid);
+      for (let col = 0; col < state.widthInTiles; col++) {
+        newGrid[0][col] = pick();
+        newGrid[state.heightInTiles - 1][col] = pick();
+      }
+      for (let row = 0; row < state.heightInTiles; row++) {
+        newGrid[row][0] = pick();
+        newGrid[row][state.widthInTiles - 1] = pick();
+      }
+      return { ...state, grid: newGrid, isDirty: true };
+    }
+
+    case 'MARK_SAVED':
+      return { ...state, isDirty: false };
+
+    default: {
+      const _exhaustive: never = action;
+      void _exhaustive;
       return state;
     }
-    const newGrid = cloneGrid(state.grid);
-    for (let col = 0; col < state.widthInTiles; col++) {
-      newGrid[0][col] = action.wallTileCode;
-      newGrid[state.heightInTiles - 1][col] = action.wallTileCode;
-    }
-    for (let row = 0; row < state.heightInTiles; row++) {
-      newGrid[row][0] = action.wallTileCode;
-      newGrid[row][state.widthInTiles - 1] = action.wallTileCode;
-    }
-    return { ...state, grid: newGrid, isDirty: true };
   }
-
-  if (action.type === 'AUTO_RANDOM_BORDER') {
-    if (state.widthInTiles === 0 || state.heightInTiles === 0 || action.wallTileCodes.length === 0) {
-      return state;
-    }
-    const codes = action.wallTileCodes;
-    const pick = () => codes[Math.floor(Math.random() * codes.length)];
-    const newGrid = cloneGrid(state.grid);
-    for (let col = 0; col < state.widthInTiles; col++) {
-      newGrid[0][col] = pick();
-      newGrid[state.heightInTiles - 1][col] = pick();
-    }
-    for (let row = 0; row < state.heightInTiles; row++) {
-      newGrid[row][0] = pick();
-      newGrid[row][state.widthInTiles - 1] = pick();
-    }
-    return { ...state, grid: newGrid, isDirty: true };
-  }
-
-  if (action.type === 'MARK_SAVED') {
-    return { ...state, isDirty: false };
-  }
-
-  return state;
 }
 
 export function normalizeSelection(sel: Selection): { startCol: number; startRow: number; endCol: number; endRow: number } {

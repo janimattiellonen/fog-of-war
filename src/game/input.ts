@@ -22,10 +22,6 @@ const KEY_BINDINGS: Record<string, Direction> = {
   '6': { dx: 1, dy: 0 },
 };
 
-export function getDirectionFromKey(key: string): Direction | null {
-  return KEY_BINDINGS[key] ?? null;
-}
-
 export function createInputState() {
   const keysDown = new Set<string>();
   return {
