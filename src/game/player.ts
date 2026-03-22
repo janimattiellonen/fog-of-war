@@ -6,11 +6,33 @@ export interface PlayerState {
   y: number;
 }
 
-export function createPlayer(fieldWidth: number, fieldHeight: number): PlayerState {
-  return {
-    x: fieldWidth / 2,
-    y: fieldHeight / 2,
-  };
+export function createPlayer(fieldWidth: number, fieldHeight: number, tileMap: TileMap): PlayerState {
+  const centerX = fieldWidth / 2;
+  const centerY = fieldHeight / 2;
+
+  if (!collidesWithWall(centerX, centerY, tileMap)) {
+    return { x: centerX, y: centerY };
+  }
+
+  // Spiral outward from center to find a non-solid tile
+  for (let radius = 1; radius < Math.max(tileMap.width, tileMap.height); radius++) {
+    for (let dy = -radius; dy <= radius; dy++) {
+      for (let dx = -radius; dx <= radius; dx++) {
+        if (Math.abs(dx) !== radius && Math.abs(dy) !== radius) {
+          continue;
+        }
+        const col = Math.floor(centerX / TILE_SIZE) + dx;
+        const row = Math.floor(centerY / TILE_SIZE) + dy;
+        const x = col * TILE_SIZE + TILE_SIZE / 2;
+        const y = row * TILE_SIZE + TILE_SIZE / 2;
+        if (!collidesWithWall(x, y, tileMap)) {
+          return { x, y };
+        }
+      }
+    }
+  }
+
+  return { x: centerX, y: centerY };
 }
 
 export function movePlayer(player: PlayerState, dx: number, dy: number, tileMap: TileMap): PlayerState {

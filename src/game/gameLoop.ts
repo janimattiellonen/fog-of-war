@@ -19,7 +19,7 @@ export async function loadGameState(mapUrl: string, configUrl = '/maps/tiles.con
   const config = parseTileConfig(configText);
   const parsed = parseMap(mapText, config);
   const tileMap = createTileMapFromParsed(parsed);
-  const player = createPlayer(parsed.widthInPixels, parsed.heightInPixels);
+  const player = createPlayer(parsed.widthInPixels, parsed.heightInPixels, tileMap);
   return { player, tileMap };
 }
 
