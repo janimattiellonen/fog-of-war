@@ -1,6 +1,11 @@
 import { useState, useEffect } from 'react';
 import MapPreview from './MapPreview';
 
+interface MapSize {
+  cols: number;
+  rows: number;
+}
+
 interface StartMenuProps {
   onStartGame: (mapFile: string) => void;
 }
@@ -18,12 +23,26 @@ function formatMapName(filename: string): string {
 
 export default function StartMenu({ onStartGame }: StartMenuProps) {
   const [maps, setMaps] = useState<string[]>([]);
+  const [mapSizes, setMapSizes] = useState<Record<string, MapSize>>({});
   const [showMapSelect, setShowMapSelect] = useState(false);
 
   useEffect(() => {
     fetch('/maps/maps.json')
       .then((res) => res.json())
-      .then((data: string[]) => setMaps(data))
+      .then((data: string[]) => {
+        setMaps(data);
+        for (const mapFile of data) {
+          fetch(`/maps/${mapFile}`)
+            .then((res) => res.text())
+            .then((text) => {
+              const size = parseGridSize(text);
+              if (size) {
+                setMapSizes((prev) => ({ ...prev, [mapFile]: size }));
+              }
+            })
+            .catch(() => {});
+        }
+      })
       .catch(() => {});
   }, []);
 
@@ -116,6 +135,11 @@ export default function StartMenu({ onStartGame }: StartMenuProps) {
                   fontWeight: 500,
                 }}>
                   {formatMapName(mapFile)}
+                  {mapSizes[mapFile] && (
+                    <span style={{ color: '#998877', fontWeight: 400 }}>
+                      {` (${mapSizes[mapFile].cols} x ${mapSizes[mapFile].rows})`}
+                    </span>
+                  )}
                 </span>
               </button>
             ))}
@@ -128,6 +152,26 @@ export default function StartMenu({ onStartGame }: StartMenuProps) {
       )}
     </div>
   );
+}
+
+function parseGridSize(text: string): MapSize | null {
+  const lines = text.split('\n');
+  let inGrid = false;
+  let rows = 0;
+  let cols = 0;
+  for (const raw of lines) {
+    const line = raw.trim();
+    if (line === 'GRID') {
+      inGrid = true;
+      continue;
+    }
+    if (!inGrid || line === '' || line.startsWith('#')) continue;
+    if (line === 'CLASSES' || line === 'TILES') break;
+    const tokens = line.split(/\s+/);
+    if (rows === 0) cols = tokens.length;
+    rows++;
+  }
+  return rows > 0 ? { cols, rows } : null;
 }
 
 function MenuButton({ children, onClick, disabled }: {
