@@ -85,6 +85,9 @@ export default function StartMenu({ onStartGame }: StartMenuProps) {
           <MenuButton onClick={() => setShowMapSelect(true)} disabled={maps.length === 0}>
             Select Map
           </MenuButton>
+          <MenuButton onClick={() => window.open('/editor', '_blank')}>
+            Editor
+          </MenuButton>
         </div>
       ) : (
         <div style={{
