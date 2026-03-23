@@ -2,6 +2,7 @@ import type { PlayerState } from './player';
 import type { TileMap } from './tiles';
 import { TILE_SIZE, getTileImage } from './tiles';
 import { PLAYER_RADIUS, VISIBLE_RADIUS, FOG_EDGE_THICKNESS } from './constants';
+import { type MinimapState, renderMinimap } from './minimap';
 
 export function render(
   ctx: CanvasRenderingContext2D,
@@ -10,6 +11,7 @@ export function render(
   viewportWidth: number,
   viewportHeight: number,
   time: number,
+  minimap?: MinimapState,
 ) {
   const cameraX = player.x - viewportWidth / 2;
   const cameraY = player.y - viewportHeight / 2;
@@ -24,6 +26,10 @@ export function render(
   ctx.restore();
 
   drawFogOfWar(ctx, viewportWidth, viewportHeight);
+
+  if (minimap) {
+    renderMinimap(ctx, minimap, tileMap, player);
+  }
 }
 
 function drawTiles(
