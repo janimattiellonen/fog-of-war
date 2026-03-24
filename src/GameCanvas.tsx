@@ -6,9 +6,10 @@ interface GameCanvasProps {
   mapFile: string;
   paused?: boolean;
   onEscape?: () => void;
+  onGameOver?: () => void;
 }
 
-export default function GameCanvas({ mapFile, paused, onEscape }: GameCanvasProps) {
+export default function GameCanvas({ mapFile, paused, onEscape, onGameOver }: GameCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const gameStateRef = useRef<GameState | null>(null);
   const inputRef = useRef(createInputState());
@@ -16,6 +17,9 @@ export default function GameCanvas({ mapFile, paused, onEscape }: GameCanvasProp
   pausedRef.current = paused;
   const onEscapeRef = useRef(onEscape);
   onEscapeRef.current = onEscape;
+  const onGameOverRef = useRef(onGameOver);
+  onGameOverRef.current = onGameOver;
+  const gameOverFiredRef = useRef(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -56,6 +60,7 @@ export default function GameCanvas({ mapFile, paused, onEscape }: GameCanvasProp
 
     let animationId: number;
     let cancelled = false;
+    let lastTime = 0;
 
     loadGameState(`/maps/${mapFile}`).then((state) => {
       if (cancelled) {
@@ -68,9 +73,20 @@ export default function GameCanvas({ mapFile, paused, onEscape }: GameCanvasProp
         if (!gameStateRef.current) {
           return;
         }
-        const movement = inputRef.current.getMovement();
-        gameStateRef.current = updateGame(gameStateRef.current, movement);
-        renderGame(ctx, gameStateRef.current, window.innerWidth, window.innerHeight, time);
+        if (pausedRef.current) {
+          lastTime = 0;
+          renderGame(ctx, gameStateRef.current, window.innerWidth, window.innerHeight, time);
+        } else {
+          const dt = lastTime === 0 ? 0 : (time - lastTime) / 1000;
+          lastTime = time;
+          const movement = inputRef.current.getMovement();
+          gameStateRef.current = updateGame(gameStateRef.current, movement, dt);
+          renderGame(ctx, gameStateRef.current, window.innerWidth, window.innerHeight, time);
+          if (gameStateRef.current.player.hp <= 0 && !gameOverFiredRef.current) {
+            gameOverFiredRef.current = true;
+            onGameOverRef.current?.();
+          }
+        }
         animationId = requestAnimationFrame(loop);
       };
       animationId = requestAnimationFrame(loop);

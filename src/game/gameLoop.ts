@@ -1,6 +1,6 @@
 import { type PlayerState, createPlayer, movePlayer } from './player';
 import { type Direction } from './input';
-import { type TileMap, createTileMapFromParsed, clearTileCache } from './tiles';
+import { type TileMap, createTileMapFromParsed, clearTileCache, getPlayerTileProperty } from './tiles';
 import { parseTileConfig, parseMap } from './mapParser';
 import { render } from './renderer';
 import { type MinimapState, createMinimapState, updateExplored } from './minimap';
@@ -34,8 +34,14 @@ export async function loadGameState(mapUrl: string, configUrl = '/maps/tiles.con
   return { player, tileMap, minimap };
 }
 
-export function updateGame(state: GameState, movement: Direction): GameState {
-  const player = movePlayer(state.player, movement.dx, movement.dy, state.tileMap);
+export function updateGame(state: GameState, movement: Direction, dt: number): GameState {
+  const moved = movePlayer(state.player, movement.dx, movement.dy, state.tileMap);
+
+  const damagePerSecond = getPlayerTileProperty(state.tileMap, moved.x, moved.y, 'damage', 0);
+  const player = damagePerSecond > 0
+    ? { ...moved, hp: Math.max(0, moved.hp - damagePerSecond * dt) }
+    : moved;
+
   updateExplored(state.minimap, player, state.tileMap);
   return {
     ...state,

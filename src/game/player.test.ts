@@ -5,12 +5,12 @@ import { MOVE_SPEED } from './constants'
 
 const CONFIG_TEXT = `
 CLASSES
-F:floor:false
-W:wall:true
+FL:floor:false
+WL:wall:true
 
 TILES
-F00:floor:floor/dirt0.png
-W00:wall:wall/brick0.png
+FL00:floor:floor/dirt0.png
+WL00:wall:wall/brick0.png
 `
 
 function makeTileMap(mapText: string): TileMap {
@@ -21,18 +21,18 @@ function makeTileMap(mapText: string): TileMap {
 
 const OPEN_MAP = `
 GRID
-W00 W00 W00 W00 W00
-W00 F00 F00 F00 W00
-W00 F00 F00 F00 W00
-W00 F00 F00 F00 W00
-W00 W00 W00 W00 W00
+WL00 WL00 WL00 WL00 WL00
+WL00 FL00 FL00 FL00 WL00
+WL00 FL00 FL00 FL00 WL00
+WL00 FL00 FL00 FL00 WL00
+WL00 WL00 WL00 WL00 WL00
 `
 
 const ALL_WALLS_EXCEPT_CORNER = `
 GRID
-W00 W00 W00
-W00 W00 F00
-W00 W00 W00
+WL00 WL00 WL00
+WL00 WL00 FL00
+WL00 WL00 WL00
 `
 
 describe('createPlayer', () => {
@@ -46,18 +46,17 @@ describe('createPlayer', () => {
   it('should find a non-solid tile when center is solid', () => {
     const tileMap = makeTileMap(ALL_WALLS_EXCEPT_CORNER)
     const player = createPlayer(tileMap.width * 32, tileMap.height * 32, tileMap)
-    // Player should not be placed on a wall tile
     const col = Math.floor(player.x / 32)
     const row = Math.floor(player.y / 32)
     const code = tileMap.grid[row][col]
-    expect(code).toBe('F00')
+    expect(code).toBe('FL00')
   })
 })
 
 describe('movePlayer', () => {
   it('should move player in open space', () => {
     const tileMap = makeTileMap(OPEN_MAP)
-    const player = { x: 80, y: 80 } // center of open area
+    const player = { x: 80, y: 80, hp: 100, maxHp: 100 }
     const moved = movePlayer(player, 1, 0, tileMap)
     expect(moved.x).toBe(80 + MOVE_SPEED)
     expect(moved.y).toBe(80)
@@ -65,28 +64,21 @@ describe('movePlayer', () => {
 
   it('should not move into a wall horizontally', () => {
     const tileMap = makeTileMap(OPEN_MAP)
-    // Place player right next to left wall (col 0 is wall, col 1 is floor)
-    const player = { x: 32 + 1, y: 80 } // just inside floor tile at col 1
+    const player = { x: 32 + 1, y: 80, hp: 100, maxHp: 100 }
     const moved = movePlayer(player, -1, 0, tileMap)
-    // x should not change because moving left would collide with wall
     expect(moved.x).toBe(player.x)
   })
 
   it('should not move into a wall vertically', () => {
     const tileMap = makeTileMap(OPEN_MAP)
-    const player = { x: 80, y: 32 + 1 } // just inside floor tile at row 1
+    const player = { x: 80, y: 32 + 1, hp: 100, maxHp: 100 }
     const moved = movePlayer(player, 0, -1, tileMap)
     expect(moved.y).toBe(player.y)
   })
 
   it('should resolve axes independently (slide along wall)', () => {
     const tileMap = makeTileMap(OPEN_MAP)
-    // Place player safely inside floor area but near top wall
-    // Row 0 is wall (0-31px), row 1 is floor (32-63px)
-    // Player at y=45 with PLAYER_RADIUS=12.5: top edge = 32.5 (just inside floor)
-    // Moving up by MOVE_SPEED=3: new top edge = 29.5 (inside wall) → Y blocked
-    // But X should still move freely
-    const player = { x: 80, y: 45 }
+    const player = { x: 80, y: 45, hp: 100, maxHp: 100 }
     const moved = movePlayer(player, 1, -1, tileMap)
     expect(moved.x).toBeGreaterThan(player.x)
     expect(moved.y).toBe(player.y)
@@ -94,7 +86,7 @@ describe('movePlayer', () => {
 
   it('should not move when direction is zero', () => {
     const tileMap = makeTileMap(OPEN_MAP)
-    const player = { x: 80, y: 80 }
+    const player = { x: 80, y: 80, hp: 100, maxHp: 100 }
     const moved = movePlayer(player, 0, 0, tileMap)
     expect(moved).toEqual(player)
   })

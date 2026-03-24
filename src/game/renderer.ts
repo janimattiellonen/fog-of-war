@@ -27,6 +27,8 @@ export function render(
 
   drawFogOfWar(ctx, viewportWidth, viewportHeight);
 
+  drawHealthBar(ctx, player, viewportWidth, time);
+
   if (minimap) {
     renderMinimap(ctx, minimap, tileMap, player);
   }
@@ -87,6 +89,54 @@ function drawPlayer(ctx: CanvasRenderingContext2D, player: PlayerState, time: nu
   ctx.arc(player.x, player.y, PLAYER_RADIUS, 0, Math.PI * 2);
   ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
   ctx.fill();
+}
+
+function drawHealthBar(
+  ctx: CanvasRenderingContext2D,
+  player: PlayerState,
+  viewportWidth: number,
+  time: number,
+) {
+  const barWidth = 200;
+  const barHeight = 20;
+  const padding = 16;
+  const x = viewportWidth - barWidth - padding;
+  const y = padding;
+
+  const hpRatio = Math.max(0, player.hp / player.maxHp);
+  const losing = player.hp < player.maxHp && player.hp > 0;
+
+  // Background (red = lost health)
+  ctx.fillStyle = '#8b0000';
+  ctx.fillRect(x, y, barWidth, barHeight);
+
+  // Foreground (green = current health, pulsates when losing)
+  if (losing) {
+    const pulse = Math.sin(time * 0.008) * 0.5 + 0.5;
+    const r = Math.round(34 + pulse * 60);
+    const g = Math.round(197 - pulse * 50);
+    const b = Math.round(94 - pulse * 30);
+    ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+  } else {
+    ctx.fillStyle = '#22c55e';
+  }
+  ctx.fillRect(x, y, barWidth * hpRatio, barHeight);
+
+  // Border
+  ctx.strokeStyle = '#ffffff';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(x, y, barWidth, barHeight);
+
+  // HP text
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 12px monospace';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(
+    `${Math.ceil(player.hp)} / ${player.maxHp}`,
+    x + barWidth / 2,
+    y + barHeight / 2,
+  );
 }
 
 function drawFogOfWar(ctx: CanvasRenderingContext2D, viewportWidth: number, viewportHeight: number) {

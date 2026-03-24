@@ -1,4 +1,4 @@
-import type { TileConfig } from '../game/mapParser';
+import { getClassPrefix, type TileConfig } from '../game/mapParser';
 
 export type ActiveTool = 'paint' | 'select' | 'autoborder';
 
@@ -39,8 +39,8 @@ export type EditorAction =
 
 export function getDefaultFloorTile(config: TileConfig): string | null {
   return Object.keys(config.tiles).find((code) => {
-    const classLetter = code[0];
-    return config.classes[classLetter] && !config.classes[classLetter].solid;
+    const classPrefix = getClassPrefix(code);
+    return config.classes[classPrefix] && !config.classes[classPrefix].solid;
   }) ?? Object.keys(config.tiles)[0] ?? null;
 }
 
