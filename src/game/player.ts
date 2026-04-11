@@ -1,9 +1,11 @@
-import { PLAYER_RADIUS, MOVE_SPEED } from './constants';
-import { type TileMap, isSolid, TILE_SIZE } from './tiles';
+import { PLAYER_RADIUS, MOVE_SPEED, DEFAULT_MAX_HP } from './constants';
+import { type TileMap, isSolid, getPlayerTileProperty, TILE_SIZE } from './tiles';
 
 export interface PlayerState {
   x: number;
   y: number;
+  hp: number;
+  maxHp: number;
 }
 
 export function createPlayer(fieldWidth: number, fieldHeight: number, tileMap: TileMap): PlayerState {
@@ -11,7 +13,7 @@ export function createPlayer(fieldWidth: number, fieldHeight: number, tileMap: T
   const centerY = fieldHeight / 2;
 
   if (!collidesWithWall(centerX, centerY, tileMap)) {
-    return { x: centerX, y: centerY };
+    return { x: centerX, y: centerY, hp: DEFAULT_MAX_HP, maxHp: DEFAULT_MAX_HP };
   }
 
   // Spiral outward from center to find a non-solid tile
@@ -26,23 +28,26 @@ export function createPlayer(fieldWidth: number, fieldHeight: number, tileMap: T
         const x = col * TILE_SIZE + TILE_SIZE / 2;
         const y = row * TILE_SIZE + TILE_SIZE / 2;
         if (!collidesWithWall(x, y, tileMap)) {
-          return { x, y };
+          return { x, y, hp: DEFAULT_MAX_HP, maxHp: DEFAULT_MAX_HP };
         }
       }
     }
   }
 
-  return { x: centerX, y: centerY };
+  return { x: centerX, y: centerY, hp: DEFAULT_MAX_HP, maxHp: DEFAULT_MAX_HP };
 }
 
 export function movePlayer(player: PlayerState, dx: number, dy: number, tileMap: TileMap): PlayerState {
-  const newX = player.x + dx * MOVE_SPEED;
-  const newY = player.y + dy * MOVE_SPEED;
+  const speedModifier = getPlayerTileProperty(tileMap, player.x, player.y, 'speedModifier', 1.0);
+  const effectiveSpeed = MOVE_SPEED * speedModifier;
+
+  const newX = player.x + dx * effectiveSpeed;
+  const newY = player.y + dy * effectiveSpeed;
 
   const resolvedX = collidesWithWall(newX, player.y, tileMap) ? player.x : newX;
   const resolvedY = collidesWithWall(resolvedX, newY, tileMap) ? player.y : newY;
 
-  return { x: resolvedX, y: resolvedY };
+  return { ...player, x: resolvedX, y: resolvedY };
 }
 
 function collidesWithWall(x: number, y: number, tileMap: TileMap): boolean {

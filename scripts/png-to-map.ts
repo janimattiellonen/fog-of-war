@@ -5,8 +5,8 @@ import { PNG } from 'pngjs';
 const TILE_PX = 10;
 
 const COLOR_MAP: Record<string, string> = {
-  '302721': 'W00',
-  '8b6916': 'F00',
+  '302721': 'WL00',
+  '8b6916': 'FL00',
 };
 
 function rgbToHex(r: number, g: number, b: number): string {

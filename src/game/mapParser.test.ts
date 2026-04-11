@@ -1,59 +1,77 @@
-import { parseTileConfig, parseMap, type TileConfig } from './mapParser'
+import { parseTileConfig, parseMap, getClassPrefix, type TileConfig } from './mapParser'
 
 const VALID_CONFIG = `
 CLASSES
-F:floor:false
-W:wall:true
+FL:floor:false
+WL:wall:true
 
 TILES
-F00:floor:floor/dirt0.png
-F01:floor:floor/dirt1.png
-W00:wall:wall/brick0.png
+FL00:floor:floor/dirt0.png
+FL01:floor:floor/dirt1.png
+WL00:wall:wall/brick0.png
 `
 
 const VALID_MAP = `
 GRID
-W00 W00 W00
-W00 F00 W00
-W00 W00 W00
+WL00 WL00 WL00
+WL00 FL00 WL00
+WL00 WL00 WL00
 `
 
 const FULL_MAP = `
 # A self-contained map with inline config
 CLASSES
-F:floor:false
-W:wall:true
+FL:floor:false
+WL:wall:true
 
 TILES
-F00:floor:floor/dirt0.png
-W00:wall:wall/brick0.png
+FL00:floor:floor/dirt0.png
+WL00:wall:wall/brick0.png
 
 GRID
-W00 W00 W00
-W00 F00 W00
-W00 W00 W00
+WL00 WL00 WL00
+WL00 FL00 WL00
+WL00 WL00 WL00
 `
 
 function makeConfig(): TileConfig {
   return parseTileConfig(VALID_CONFIG)
 }
 
+describe('getClassPrefix', () => {
+  it('should extract single-letter prefix', () => {
+    expect(getClassPrefix('F00')).toBe('F')
+  })
+
+  it('should extract two-letter prefix', () => {
+    expect(getClassPrefix('FL00')).toBe('FL')
+  })
+
+  it('should extract multi-letter prefix', () => {
+    expect(getClassPrefix('ABC123')).toBe('ABC')
+  })
+
+  it('should return empty string for numeric-only code', () => {
+    expect(getClassPrefix('123')).toBe('')
+  })
+})
+
 describe('parseTileConfig', () => {
   it('should parse classes', () => {
     const config = parseTileConfig(VALID_CONFIG)
-    expect(config.classes['F']).toEqual({ name: 'floor', solid: false })
-    expect(config.classes['W']).toEqual({ name: 'wall', solid: true })
+    expect(config.classes['FL']).toEqual({ name: 'floor', solid: false })
+    expect(config.classes['WL']).toEqual({ name: 'wall', solid: true })
   })
 
   it('should parse tiles', () => {
     const config = parseTileConfig(VALID_CONFIG)
-    expect(config.tiles['F00']).toEqual({ code: 'F00', className: 'floor', image: 'floor/dirt0.png' })
-    expect(config.tiles['W00']).toEqual({ code: 'W00', className: 'wall', image: 'wall/brick0.png' })
+    expect(config.tiles['FL00']).toEqual({ code: 'FL00', className: 'floor', image: 'floor/dirt0.png' })
+    expect(config.tiles['WL00']).toEqual({ code: 'WL00', className: 'wall', image: 'wall/brick0.png' })
   })
 
   it('should parse multiple tile variants', () => {
     const config = parseTileConfig(VALID_CONFIG)
-    expect(config.tiles['F01']).toEqual({ code: 'F01', className: 'floor', image: 'floor/dirt1.png' })
+    expect(config.tiles['FL01']).toEqual({ code: 'FL01', className: 'floor', image: 'floor/dirt1.png' })
   })
 
   it('should skip comments and empty lines', () => {
@@ -61,20 +79,20 @@ describe('parseTileConfig', () => {
 # This is a comment
 CLASSES
 # Another comment
-F:floor:false
+FL:floor:false
 
 TILES
-F00:floor:floor/dirt0.png
+FL00:floor:floor/dirt0.png
 `
     const config = parseTileConfig(text)
-    expect(config.classes['F']).toEqual({ name: 'floor', solid: false })
-    expect(config.tiles['F00']).toBeDefined()
+    expect(config.classes['FL']).toEqual({ name: 'floor', solid: false })
+    expect(config.tiles['FL00']).toBeDefined()
   })
 
   it('should throw on invalid class definition', () => {
     const text = `
 CLASSES
-F:floor
+FL:floor
 `
     expect(() => parseTileConfig(text)).toThrow('Invalid class definition')
   })
@@ -82,40 +100,120 @@ F:floor
   it('should throw on invalid tile definition', () => {
     const text = `
 CLASSES
-F:floor:false
+FL:floor:false
 
 TILES
-F00:floor
+FL00:floor
 `
     expect(() => parseTileConfig(text)).toThrow('Invalid tile definition')
   })
 
-  it('should throw when tile references unknown class letter', () => {
+  it('should throw when tile references unknown class', () => {
     const text = `
 CLASSES
-F:floor:false
+FL:floor:false
 
 TILES
-W00:wall:wall/brick0.png
+WL00:wall:wall/brick0.png
 `
-    expect(() => parseTileConfig(text)).toThrow('unknown class letter "W"')
+    expect(() => parseTileConfig(text)).toThrow('unknown class "WL"')
   })
 
-  it('should throw when tile class name does not match class letter', () => {
+  it('should throw when tile class name does not match class', () => {
     const text = `
 CLASSES
-F:floor:false
+FL:floor:false
 
 TILES
-F00:wall:floor/dirt0.png
+FL00:wall:floor/dirt0.png
 `
-    expect(() => parseTileConfig(text)).toThrow("doesn't match class letter")
+    expect(() => parseTileConfig(text)).toThrow("doesn't match class")
   })
 
   it('should return empty config for text with no sections', () => {
     const config = parseTileConfig('# just a comment')
     expect(Object.keys(config.classes)).toHaveLength(0)
     expect(Object.keys(config.tiles)).toHaveLength(0)
+  })
+
+  it('should parse class-level properties', () => {
+    const text = `
+CLASSES
+FL:floor:false
+
+TILES
+FL00:floor:floor/dirt0.png
+
+PROPERTIES
+FL.speedModifier=0.5
+`
+    const config = parseTileConfig(text)
+    expect(config.classProperties['FL']).toEqual({ speedModifier: 0.5 })
+  })
+
+  it('should parse tile-level properties', () => {
+    const text = `
+CLASSES
+FL:floor:false
+
+TILES
+FL00:floor:floor/dirt0.png
+
+PROPERTIES
+FL00.damage=1.5
+`
+    const config = parseTileConfig(text)
+    expect(config.tileProperties['FL00']).toEqual({ damage: 1.5 })
+  })
+
+  it('should parse multiple properties on same target', () => {
+    const text = `
+CLASSES
+FL:floor:false
+
+TILES
+FL00:floor:floor/dirt0.png
+
+PROPERTIES
+FL.speedModifier=0.3
+FL.damage=2
+`
+    const config = parseTileConfig(text)
+    expect(config.classProperties['FL']).toEqual({ speedModifier: 0.3, damage: 2 })
+  })
+
+  it('should throw on property with unknown target', () => {
+    const text = `
+CLASSES
+FL:floor:false
+
+TILES
+FL00:floor:floor/dirt0.png
+
+PROPERTIES
+X.speedModifier=0.5
+`
+    expect(() => parseTileConfig(text)).toThrow('not a known class or tile')
+  })
+
+  it('should throw on property with invalid value', () => {
+    const text = `
+CLASSES
+FL:floor:false
+
+TILES
+FL00:floor:floor/dirt0.png
+
+PROPERTIES
+FL.speedModifier=abc
+`
+    expect(() => parseTileConfig(text)).toThrow('not a number')
+  })
+
+  it('should return empty properties when no PROPERTIES section', () => {
+    const config = parseTileConfig(VALID_CONFIG)
+    expect(config.classProperties).toEqual({})
+    expect(config.tileProperties).toEqual({})
   })
 })
 
@@ -126,7 +224,7 @@ describe('parseMap', () => {
     expect(map.widthInTiles).toBe(3)
     expect(map.heightInTiles).toBe(3)
     expect(map.grid).toHaveLength(3)
-    expect(map.grid[1][1]).toBe('F00')
+    expect(map.grid[1][1]).toBe('FL00')
   })
 
   it('should calculate pixel dimensions from tile dimensions', () => {
@@ -139,22 +237,22 @@ describe('parseMap', () => {
   it('should parse a self-contained map with inline config', () => {
     const map = parseMap(FULL_MAP)
     expect(map.widthInTiles).toBe(3)
-    expect(map.classes['F']).toBeDefined()
-    expect(map.tiles['F00']).toBeDefined()
+    expect(map.classes['FL']).toBeDefined()
+    expect(map.tiles['FL00']).toBeDefined()
   })
 
   it('should merge external config with inline config', () => {
     const config = makeConfig()
     const mapWithExtraTile = `
 TILES
-F02:floor:floor/dirt2.png
+FL02:floor:floor/dirt2.png
 
 GRID
-W00 F02 W00
+WL00 FL02 WL00
 `
     const map = parseMap(mapWithExtraTile, config)
-    expect(map.tiles['F02']).toBeDefined()
-    expect(map.tiles['F00']).toBeDefined()
+    expect(map.tiles['FL02']).toBeDefined()
+    expect(map.tiles['FL00']).toBeDefined()
   })
 
   it('should throw when grid is empty', () => {
@@ -170,9 +268,9 @@ W00 F02 W00
     const config = makeConfig()
     const mapText = `
 GRID
-W00 W00 W00
-W00 F00
-W00 W00 W00
+WL00 WL00 WL00
+WL00 FL00
+WL00 WL00 WL00
 `
     expect(() => parseMap(mapText, config)).toThrow('columns, expected 3')
   })
@@ -181,7 +279,7 @@ W00 W00 W00
     const config = makeConfig()
     const mapText = `
 GRID
-W00 X99 W00
+WL00 X99 WL00
 `
     expect(() => parseMap(mapText, config)).toThrow('unknown tile "X99"')
   })
@@ -189,8 +287,8 @@ W00 X99 W00
   it('should preserve all grid data exactly', () => {
     const config = makeConfig()
     const map = parseMap(VALID_MAP, config)
-    expect(map.grid[0]).toEqual(['W00', 'W00', 'W00'])
-    expect(map.grid[1]).toEqual(['W00', 'F00', 'W00'])
-    expect(map.grid[2]).toEqual(['W00', 'W00', 'W00'])
+    expect(map.grid[0]).toEqual(['WL00', 'WL00', 'WL00'])
+    expect(map.grid[1]).toEqual(['WL00', 'FL00', 'WL00'])
+    expect(map.grid[2]).toEqual(['WL00', 'WL00', 'WL00'])
   })
 })

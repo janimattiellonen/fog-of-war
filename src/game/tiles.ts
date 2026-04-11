@@ -1,4 +1,5 @@
 import type { ParsedMap } from './mapParser';
+import { getClassPrefix } from './mapParser';
 
 export const TILE_SIZE = 32;
 
@@ -34,9 +35,41 @@ export function isSolid(tileMap: TileMap, col: number, row: number): boolean {
   if (!tileDef) {
     return true;
   }
-  const classLetter = code[0];
-  const tileClass = tileMap.map.classes[classLetter];
+  const classPrefix = getClassPrefix(code);
+  const tileClass = tileMap.map.classes[classPrefix];
   return tileClass?.solid ?? true;
+}
+
+export function getTileProperty(
+  tileMap: TileMap,
+  col: number,
+  row: number,
+  property: string,
+  defaultValue: number,
+): number {
+  const code = getTileCode(tileMap, col, row);
+  if (code === null) return defaultValue;
+
+  const tileProp = tileMap.map.tileProperties[code]?.[property];
+  if (tileProp !== undefined) return tileProp;
+
+  const classPrefix = getClassPrefix(code);
+  const classProp = tileMap.map.classProperties[classPrefix]?.[property];
+  if (classProp !== undefined) return classProp;
+
+  return defaultValue;
+}
+
+export function getPlayerTileProperty(
+  tileMap: TileMap,
+  playerX: number,
+  playerY: number,
+  property: string,
+  defaultValue: number,
+): number {
+  const col = Math.floor(playerX / TILE_SIZE);
+  const row = Math.floor(playerY / TILE_SIZE);
+  return getTileProperty(tileMap, col, row, property, defaultValue);
 }
 
 const imageCache = new Map<string, HTMLImageElement>();

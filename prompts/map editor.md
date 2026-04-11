@@ -35,3 +35,11 @@ I can also choose to fill the selected area with a tile I want. Implement a way 
 ### Auto border
 
 The "Auto border" tool allows me to select a wall tile and then have the editor automatically draw a wall around the edges of the map with the selected wall tile. 
+
+
+### Allow editing maps in public/maps
+
+The user should be able to edit any map that is in public/map and save the changes to the same file.
+
+When the "Select map" menu is open and the user hovers over a map, show "Edit" link on top of the map item. When clicked, the map would be opened in the editor. The editor needs a new button named "Save .map". Clicking this button will either update the existing map, or allow the user to create a new map. It would be nice if the user could choose, where the file isa saved.
+

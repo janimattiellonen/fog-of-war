@@ -85,6 +85,9 @@ export default function StartMenu({ onStartGame }: StartMenuProps) {
           <MenuButton onClick={() => setShowMapSelect(true)} disabled={maps.length === 0}>
             Select Map
           </MenuButton>
+          <MenuButton onClick={() => window.open('/editor', '_blank')}>
+            Editor
+          </MenuButton>
         </div>
       ) : (
         <div style={{
@@ -104,44 +107,12 @@ export default function StartMenu({ onStartGame }: StartMenuProps) {
             maxWidth: 600,
           }}>
             {maps.map((mapFile) => (
-              <button
+              <MapCard
                 key={mapFile}
-                onClick={() => onStartGame(mapFile)}
-                style={{
-                  background: 'rgba(255, 255, 255, 0.06)',
-                  border: '1px solid rgba(255, 255, 255, 0.12)',
-                  borderRadius: 10,
-                  padding: 12,
-                  cursor: 'pointer',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  gap: 10,
-                  transition: 'background 0.2s, border-color 0.2s',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.12)';
-                  e.currentTarget.style.borderColor = 'rgba(200, 150, 80, 0.5)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.06)';
-                  e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.12)';
-                }}
-              >
-                <MapPreview mapFile={mapFile} size={130} />
-                <span style={{
-                  color: '#e8d5b5',
-                  fontSize: 14,
-                  fontWeight: 500,
-                }}>
-                  {formatMapName(mapFile)}
-                  {mapSizes[mapFile] && (
-                    <span style={{ color: '#998877', fontWeight: 400 }}>
-                      {` (${mapSizes[mapFile].cols} x ${mapSizes[mapFile].rows})`}
-                    </span>
-                  )}
-                </span>
-              </button>
+                mapFile={mapFile}
+                mapSize={mapSizes[mapFile]}
+                onPlay={() => onStartGame(mapFile)}
+              />
             ))}
           </div>
 
@@ -172,6 +143,71 @@ function parseGridSize(text: string): MapSize | null {
     rows++;
   }
   return rows > 0 ? { cols, rows } : null;
+}
+
+function MapCard({ mapFile, mapSize, onPlay }: {
+  mapFile: string;
+  mapSize?: MapSize;
+  onPlay: () => void;
+}) {
+  const [hovered, setHovered] = useState(false);
+
+  return (
+    <div
+      style={{
+        position: 'relative',
+        background: hovered ? 'rgba(255, 255, 255, 0.12)' : 'rgba(255, 255, 255, 0.06)',
+        border: `1px solid ${hovered ? 'rgba(200, 150, 80, 0.5)' : 'rgba(255, 255, 255, 0.12)'}`,
+        borderRadius: 10,
+        padding: 12,
+        cursor: 'pointer',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: 10,
+        transition: 'background 0.2s, border-color 0.2s',
+      }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      onClick={onPlay}
+    >
+      <MapPreview mapFile={mapFile} size={130} />
+      <span style={{
+        color: '#e8d5b5',
+        fontSize: 14,
+        fontWeight: 500,
+      }}>
+        {formatMapName(mapFile)}
+        {mapSize && (
+          <span style={{ color: '#998877', fontWeight: 400 }}>
+            {` (${mapSize.cols} x ${mapSize.rows})`}
+          </span>
+        )}
+      </span>
+      {hovered && (
+        <a
+          href={`/editor?map=${encodeURIComponent(mapFile)}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            position: 'absolute',
+            top: 6,
+            right: 8,
+            color: '#e8a040',
+            fontSize: 12,
+            fontWeight: 600,
+            textDecoration: 'none',
+            background: 'rgba(0, 0, 0, 0.6)',
+            padding: '2px 8px',
+            borderRadius: 4,
+          }}
+        >
+          Edit
+        </a>
+      )}
+    </div>
+  );
 }
 
 function MenuButton({ children, onClick, disabled }: {

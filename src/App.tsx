@@ -4,17 +4,20 @@ import GameCanvas from './GameCanvas';
 import MapEditor from './editor/MapEditor';
 import StartMenu from './StartMenu';
 import QuitDialog from './QuitDialog';
+import GameOverDialog from './GameOverDialog';
 
 function GamePage() {
   const [selectedMap, setSelectedMap] = useState<string | null>(null);
   const [showQuit, setShowQuit] = useState(false);
+  const [showGameOver, setShowGameOver] = useState(false);
 
   const handleEscape = () => {
-    if (selectedMap) setShowQuit(true);
+    if (selectedMap && !showGameOver) setShowQuit(true);
   };
 
   const handleQuit = () => {
     setShowQuit(false);
+    setShowGameOver(false);
     setSelectedMap(null);
   };
 
@@ -22,8 +25,9 @@ function GamePage() {
     <>
       <GameCanvas
         mapFile={selectedMap ?? 'demo4.map'}
-        paused={!selectedMap || showQuit}
+        paused={!selectedMap || showQuit || showGameOver}
         onEscape={handleEscape}
+        onGameOver={() => setShowGameOver(true)}
       />
       {!selectedMap && <StartMenu onStartGame={setSelectedMap} />}
       {showQuit && (
@@ -31,6 +35,9 @@ function GamePage() {
           onConfirm={handleQuit}
           onCancel={() => setShowQuit(false)}
         />
+      )}
+      {showGameOver && (
+        <GameOverDialog onMainMenu={handleQuit} />
       )}
     </>
   );
