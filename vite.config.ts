@@ -1,8 +1,9 @@
 import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
+import mapListPlugin from './plugins/mapListPlugin'
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), mapListPlugin()],
   server: {
     port: 5122,
   },

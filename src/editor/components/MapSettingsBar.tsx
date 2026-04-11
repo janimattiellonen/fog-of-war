@@ -1,7 +1,29 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { type EditorAction, type EditorState, getDefaultFloorTile } from '../editorState';
 import { serializeMap } from '../mapSerializer';
 import { parseMap } from '../../game/mapParser';
+
+interface FileSystemWritableFileStream extends WritableStream {
+  write(data: BufferSource | Blob | string): Promise<void>;
+  close(): Promise<void>;
+}
+
+interface FileSystemFileHandle {
+  createWritable(): Promise<FileSystemWritableFileStream>;
+  name: string;
+}
+
+interface SaveFilePickerOptions {
+  suggestedName?: string;
+  startIn?: FileSystemFileHandle | 'desktop' | 'documents' | 'downloads' | 'music' | 'pictures' | 'videos';
+  types?: { description: string; accept: Record<string, string[]> }[];
+}
+
+declare global {
+  interface Window {
+    showSaveFilePicker?: (options?: SaveFilePickerOptions) => Promise<FileSystemFileHandle>;
+  }
+}
 
 interface MapSettingsBarProps {
   state: EditorState;
@@ -31,6 +53,8 @@ const inputStyle: React.CSSProperties = {
 export default function MapSettingsBar({ state, dispatch }: MapSettingsBarProps) {
   const [newWidth, setNewWidth] = useState(30);
   const [newHeight, setNewHeight] = useState(20);
+  const fileHandleRef = useRef<FileSystemFileHandle | null>(null);
+  const lastDirHandleRef = useRef<FileSystemFileHandle | null>(null);
 
   const defaultFloorTile = state.tileConfig ? getDefaultFloorTile(state.tileConfig) : null;
 
@@ -75,6 +99,49 @@ export default function MapSettingsBar({ state, dispatch }: MapSettingsBarProps)
     };
     reader.readAsText(file);
     e.target.value = '';
+  };
+
+  const handleSave = async () => {
+    if (state.grid.length === 0) return;
+    const content = serializeMap(state.grid);
+
+    if (window.showSaveFilePicker) {
+      try {
+        const handle = fileHandleRef.current ?? await window.showSaveFilePicker({
+          suggestedName: state.fileName,
+          ...(lastDirHandleRef.current ? { startIn: lastDirHandleRef.current } : {}),
+          types: [{
+            description: 'Map files',
+            accept: { 'text/plain': ['.map'] },
+          }],
+        });
+        fileHandleRef.current = handle;
+        lastDirHandleRef.current = handle;
+        const writable = await handle.createWritable();
+        await writable.write(content);
+        await writable.close();
+        dispatch({ type: 'LOAD_MAP', grid: state.grid, fileName: handle.name });
+        dispatch({ type: 'MARK_SAVED' });
+      } catch (err) {
+        if (err instanceof DOMException && err.name === 'AbortError') return;
+        console.error('Save failed:', err);
+      }
+    } else {
+      // Fallback: download via blob
+      const blob = new Blob([content], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = state.fileName;
+      a.click();
+      URL.revokeObjectURL(url);
+      dispatch({ type: 'MARK_SAVED' });
+    }
+  };
+
+  const handleSaveAs = async () => {
+    fileHandleRef.current = null;
+    await handleSave();
   };
 
   return (
@@ -124,6 +191,16 @@ export default function MapSettingsBar({ state, dispatch }: MapSettingsBarProps)
           style={{ display: 'none' }}
         />
       </label>
+
+      {/* Save */}
+      <button style={buttonStyle} onClick={handleSave} disabled={state.grid.length === 0}>
+        Save .map
+      </button>
+      {window.showSaveFilePicker && (
+        <button style={buttonStyle} onClick={handleSaveAs} disabled={state.grid.length === 0}>
+          Save As...
+        </button>
+      )}
 
       {/* Export */}
       <button style={buttonStyle} onClick={handleExport} disabled={state.grid.length === 0}>

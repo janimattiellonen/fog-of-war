@@ -1,6 +1,7 @@
 import { useReducer, useEffect, useCallback } from 'react';
 import { editorReducer, createInitialEditorState, getDefaultFloorTile } from './editorState';
 import { loadEditorTileConfig } from './tileConfigLoader';
+import { parseMap } from '../game/mapParser';
 import Toolbox from './components/Toolbox';
 import DrawingArea from './components/DrawingArea';
 import MapSettingsBar from './components/MapSettingsBar';
@@ -11,6 +12,23 @@ export default function MapEditor() {
   useEffect(() => {
     loadEditorTileConfig().then(({ config, images }) => {
       dispatch({ type: 'SET_TILE_CONFIG', config, images });
+
+      const params = new URLSearchParams(window.location.search);
+      const mapFile = params.get('map');
+      if (mapFile) {
+        fetch(`/maps/${mapFile}`)
+          .then((res) => {
+            if (!res.ok) throw new Error(`Failed to load map: ${res.status}`);
+            return res.text();
+          })
+          .then((text) => {
+            const parsed = parseMap(text, config);
+            dispatch({ type: 'LOAD_MAP', grid: parsed.grid, fileName: mapFile });
+          })
+          .catch((err) => {
+            console.error('Failed to load map from URL param:', err);
+          });
+      }
     });
   }, []);
 

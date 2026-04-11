@@ -33,6 +33,7 @@ Read each target file and review for the following categories. Only report actua
 - Proper nullability handling (no unnecessary `!` non-null assertions)
 - Consistent use of `const` over `let` where values don't change
 - Enums vs. union types (prefer union types for simple cases)
+- always use {} with if clauses, loops and switches
 
 ### React patterns
 - Components are focused and have a single responsibility

@@ -98,4 +98,10 @@ I have included a simple PNG file in docs/example.png.
 
 Update map `/Users/janimattiellonen/Documents/Development/fog-of-war/public/maps/demo3.map` and randomly replace existing floor tiles (F00) with either F01 or F02 
 
-I also added new wall (edge) tiles.
+I also added new wall (edge) tiles. Open same map and randomly replace wall tiles (W00) with W00...W06  
+
+
+## Tile rename
+
+As we now have water and wall tiles, I want you to rename all walls (directories, files, map contents, items in tiles.conf):
+- W -> S
