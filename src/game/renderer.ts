@@ -1,8 +1,9 @@
 import type { PlayerState } from './player';
 import type { TileMap } from './tiles';
 import { TILE_SIZE, getTileImage } from './tiles';
-import { PLAYER_RADIUS, VISIBLE_RADIUS, FOG_EDGE_THICKNESS } from './constants';
+import { PLAYER_RADIUS, FOG_EDGE_THICKNESS, VISIBLE_RADIUS } from './constants';
 import { type MinimapState, renderMinimap } from './minimap';
+import type { VisibilityPolygon, Point } from './visibility';
 
 export function render(
   ctx: CanvasRenderingContext2D,
@@ -11,7 +12,8 @@ export function render(
   viewportWidth: number,
   viewportHeight: number,
   time: number,
-  minimap?: MinimapState,
+  minimap: MinimapState,
+  visibility: VisibilityPolygon,
 ) {
   const cameraX = player.x - viewportWidth / 2;
   const cameraY = player.y - viewportHeight / 2;
@@ -25,13 +27,9 @@ export function render(
 
   ctx.restore();
 
-  drawFogOfWar(ctx, viewportWidth, viewportHeight);
-
+  drawVisibilityFog(ctx, viewportWidth, viewportHeight, visibility, cameraX, cameraY);
   drawHealthBar(ctx, player, viewportWidth, time);
-
-  if (minimap) {
-    renderMinimap(ctx, minimap, tileMap, player);
-  }
+  renderMinimap(ctx, minimap, tileMap, player);
 }
 
 function drawTiles(
@@ -139,29 +137,106 @@ function drawHealthBar(
   );
 }
 
-function drawFogOfWar(ctx: CanvasRenderingContext2D, viewportWidth: number, viewportHeight: number) {
-  const centerX = viewportWidth / 2;
-  const centerY = viewportHeight / 2;
+let cachedMaskCanvas: HTMLCanvasElement | null = null;
 
-  const innerRadius = VISIBLE_RADIUS - FOG_EDGE_THICKNESS;
-  const outerRadius = VISIBLE_RADIUS;
+function drawVisibilityFog(
+  ctx: CanvasRenderingContext2D,
+  viewportWidth: number,
+  viewportHeight: number,
+  visibility: VisibilityPolygon,
+  cameraX: number,
+  cameraY: number,
+) {
+  if (!cachedMaskCanvas || cachedMaskCanvas.width !== viewportWidth || cachedMaskCanvas.height !== viewportHeight) {
+    cachedMaskCanvas = document.createElement('canvas');
+    cachedMaskCanvas.width = viewportWidth;
+    cachedMaskCanvas.height = viewportHeight;
+  }
+  const mask = cachedMaskCanvas.getContext('2d')!;
 
-  const fogGradient = ctx.createRadialGradient(
-    centerX, centerY, innerRadius,
-    centerX, centerY, outerRadius,
+  mask.globalCompositeOperation = 'source-over';
+  mask.fillStyle = 'rgba(0, 0, 0, 1)';
+  mask.fillRect(0, 0, viewportWidth, viewportHeight);
+
+  mask.globalCompositeOperation = 'destination-out';
+
+  const playerScreenX = viewportWidth / 2;
+  const playerScreenY = viewportHeight / 2;
+
+  if (visibility.cone.length > 0) {
+    fillPolygonWithRadialFade(
+      mask,
+      visibility.cone,
+      cameraX,
+      cameraY,
+      playerScreenX,
+      playerScreenY,
+      VISIBLE_RADIUS,
+    );
+  }
+
+  if (visibility.ambient.length > 0) {
+    fillPolygonWithRadialFade(
+      mask,
+      visibility.ambient,
+      cameraX,
+      cameraY,
+      playerScreenX,
+      playerScreenY,
+      visibility.ambientRadius,
+    );
+  }
+
+  // Cut out each ray-hit wall as a full rect so polygon-edge slivers across the front
+  // face of a wall tile disappear. Use the same radial gradient so distant walls fade.
+  if (visibility.litWalls.length > 0) {
+    const gradient = mask.createRadialGradient(
+      playerScreenX, playerScreenY, 0,
+      playerScreenX, playerScreenY, VISIBLE_RADIUS,
+    );
+    const inner = (VISIBLE_RADIUS - FOG_EDGE_THICKNESS) / VISIBLE_RADIUS;
+    gradient.addColorStop(0, 'rgba(0, 0, 0, 1)');
+    gradient.addColorStop(inner, 'rgba(0, 0, 0, 1)');
+    gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    mask.fillStyle = gradient;
+    for (const { col, row } of visibility.litWalls) {
+      mask.fillRect(
+        col * TILE_SIZE - cameraX,
+        row * TILE_SIZE - cameraY,
+        TILE_SIZE,
+        TILE_SIZE,
+      );
+    }
+  }
+
+  ctx.drawImage(cachedMaskCanvas, 0, 0);
+}
+
+function fillPolygonWithRadialFade(
+  mask: CanvasRenderingContext2D,
+  worldPoints: Point[],
+  cameraX: number,
+  cameraY: number,
+  centerScreenX: number,
+  centerScreenY: number,
+  outerRadius: number,
+) {
+  const softEdge = Math.min(FOG_EDGE_THICKNESS, outerRadius * 0.5);
+  const innerRadius = outerRadius - softEdge;
+  const gradient = mask.createRadialGradient(
+    centerScreenX, centerScreenY, 0,
+    centerScreenX, centerScreenY, outerRadius,
   );
-  fogGradient.addColorStop(0, 'rgba(0, 0, 0, 0)');
-  fogGradient.addColorStop(1, 'rgba(0, 0, 0, 1)');
+  gradient.addColorStop(0, 'rgba(0, 0, 0, 1)');
+  gradient.addColorStop(innerRadius / outerRadius, 'rgba(0, 0, 0, 1)');
+  gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
 
-  ctx.fillStyle = fogGradient;
-  ctx.fillRect(0, 0, viewportWidth, viewportHeight);
-
-  // Solid darkness beyond the visible radius
-  ctx.save();
-  ctx.beginPath();
-  ctx.rect(0, 0, viewportWidth, viewportHeight);
-  ctx.arc(centerX, centerY, outerRadius, 0, Math.PI * 2, true);
-  ctx.fillStyle = 'rgba(0, 0, 0, 1)';
-  ctx.fill();
-  ctx.restore();
+  mask.fillStyle = gradient;
+  mask.beginPath();
+  mask.moveTo(worldPoints[0].x - cameraX, worldPoints[0].y - cameraY);
+  for (let i = 1; i < worldPoints.length; i++) {
+    mask.lineTo(worldPoints[i].x - cameraX, worldPoints[i].y - cameraY);
+  }
+  mask.closePath();
+  mask.fill();
 }

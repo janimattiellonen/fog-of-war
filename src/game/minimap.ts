@@ -1,7 +1,6 @@
 import type { PlayerState } from './player';
 import type { TileMap } from './tiles';
 import { TILE_SIZE, isSolid } from './tiles';
-import { VISIBLE_RADIUS } from './constants';
 
 const MINIMAP_TILE_SIZE = 3;
 const MINIMAP_PADDING = 12;
@@ -26,32 +25,6 @@ export function createMinimapState(tileMap: TileMap): MinimapState {
     explored.push(new Array<boolean>(tileMap.width).fill(false));
   }
   return { explored, width: tileMap.width, height: tileMap.height };
-}
-
-export function updateExplored(minimap: MinimapState, player: PlayerState, tileMap: TileMap): void {
-  const radiusInTiles = Math.ceil(VISIBLE_RADIUS / TILE_SIZE);
-  const playerCol = Math.floor(player.x / TILE_SIZE);
-  const playerRow = Math.floor(player.y / TILE_SIZE);
-
-  const startCol = Math.max(0, playerCol - radiusInTiles);
-  const endCol = Math.min(tileMap.width - 1, playerCol + radiusInTiles);
-  const startRow = Math.max(0, playerRow - radiusInTiles);
-  const endRow = Math.min(tileMap.height - 1, playerRow + radiusInTiles);
-
-  const radiusSq = VISIBLE_RADIUS * VISIBLE_RADIUS;
-
-  for (let row = startRow; row <= endRow; row++) {
-    for (let col = startCol; col <= endCol; col++) {
-      if (minimap.explored[row][col]) continue;
-      const tileCenterX = col * TILE_SIZE + TILE_SIZE / 2;
-      const tileCenterY = row * TILE_SIZE + TILE_SIZE / 2;
-      const dx = tileCenterX - player.x;
-      const dy = tileCenterY - player.y;
-      if (dx * dx + dy * dy <= radiusSq) {
-        minimap.explored[row][col] = true;
-      }
-    }
-  }
 }
 
 export function renderMinimap(

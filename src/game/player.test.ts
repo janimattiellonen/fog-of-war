@@ -56,38 +56,38 @@ describe('createPlayer', () => {
 describe('movePlayer', () => {
   it('should move player in open space', () => {
     const tileMap = makeTileMap(OPEN_MAP)
-    const player = { x: 80, y: 80, hp: 100, maxHp: 100 }
-    const moved = movePlayer(player, 1, 0, tileMap)
+    const player = { x: 80, y: 80, hp: 100, maxHp: 100, facingAngle: 0 }
+    const moved = movePlayer(player, 1, 0, 1 / 60, tileMap)
     expect(moved.x).toBe(80 + MOVE_SPEED)
     expect(moved.y).toBe(80)
   })
 
   it('should not move into a wall horizontally', () => {
     const tileMap = makeTileMap(OPEN_MAP)
-    const player = { x: 32 + 1, y: 80, hp: 100, maxHp: 100 }
-    const moved = movePlayer(player, -1, 0, tileMap)
+    const player = { x: 32 + 1, y: 80, hp: 100, maxHp: 100, facingAngle: 0 }
+    const moved = movePlayer(player, -1, 0, 1 / 60, tileMap)
     expect(moved.x).toBe(player.x)
   })
 
   it('should not move into a wall vertically', () => {
     const tileMap = makeTileMap(OPEN_MAP)
-    const player = { x: 80, y: 32 + 1, hp: 100, maxHp: 100 }
-    const moved = movePlayer(player, 0, -1, tileMap)
+    const player = { x: 80, y: 32 + 1, hp: 100, maxHp: 100, facingAngle: 0 }
+    const moved = movePlayer(player, 0, -1, 1 / 60, tileMap)
     expect(moved.y).toBe(player.y)
   })
 
   it('should resolve axes independently (slide along wall)', () => {
     const tileMap = makeTileMap(OPEN_MAP)
-    const player = { x: 80, y: 45, hp: 100, maxHp: 100 }
-    const moved = movePlayer(player, 1, -1, tileMap)
+    const player = { x: 80, y: 45, hp: 100, maxHp: 100, facingAngle: 0 }
+    const moved = movePlayer(player, 1, -1, 1 / 60, tileMap)
     expect(moved.x).toBeGreaterThan(player.x)
     expect(moved.y).toBe(player.y)
   })
 
   it('should not move when direction is zero', () => {
     const tileMap = makeTileMap(OPEN_MAP)
-    const player = { x: 80, y: 80, hp: 100, maxHp: 100 }
-    const moved = movePlayer(player, 0, 0, tileMap)
+    const player = { x: 80, y: 80, hp: 100, maxHp: 100, facingAngle: 0 }
+    const moved = movePlayer(player, 0, 0, 1 / 60, tileMap)
     expect(moved).toEqual(player)
   })
 })

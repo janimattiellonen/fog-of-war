@@ -3,15 +3,22 @@ import { type Direction } from './input';
 import { type TileMap, createTileMapFromParsed, clearTileCache, getPlayerTileProperty } from './tiles';
 import { parseTileConfig, parseMap } from './mapParser';
 import { render } from './renderer';
-import { type MinimapState, createMinimapState, updateExplored } from './minimap';
+import { type MinimapState, createMinimapState } from './minimap';
+import { type VisibilityPolygon, computeVisibility } from './visibility';
+import type { VisibilityMode } from './settings';
 
 export interface GameState {
   player: PlayerState;
   tileMap: TileMap;
   minimap: MinimapState;
+  visibility: VisibilityPolygon;
 }
 
-export async function loadGameState(mapUrl: string, configUrl = '/maps/tiles.conf'): Promise<GameState> {
+export async function loadGameState(
+  mapUrl: string,
+  configUrl = '/maps/tiles.conf',
+  visibilityMode: VisibilityMode = 'circle',
+): Promise<GameState> {
   const [configResponse, mapResponse] = await Promise.all([
     fetch(configUrl),
     fetch(mapUrl),
@@ -30,22 +37,29 @@ export async function loadGameState(mapUrl: string, configUrl = '/maps/tiles.con
   const tileMap = createTileMapFromParsed(parsed);
   const player = createPlayer(parsed.widthInPixels, parsed.heightInPixels, tileMap);
   const minimap = createMinimapState(tileMap);
-  updateExplored(minimap, player, tileMap);
-  return { player, tileMap, minimap };
+  const visibility = computeVisibility(player, tileMap, visibilityMode, minimap);
+  return { player, tileMap, minimap, visibility };
 }
 
-export function updateGame(state: GameState, movement: Direction, dt: number): GameState {
-  const moved = movePlayer(state.player, movement.dx, movement.dy, state.tileMap);
+export function updateGame(
+  state: GameState,
+  movement: Direction,
+  dt: number,
+  visibilityMode: VisibilityMode = 'circle',
+  targetFacingAngle: number | null = null,
+): GameState {
+  const moved = movePlayer(state.player, movement.dx, movement.dy, dt, state.tileMap, targetFacingAngle);
 
   const damagePerSecond = getPlayerTileProperty(state.tileMap, moved.x, moved.y, 'damage', 0);
   const player = damagePerSecond > 0
     ? { ...moved, hp: Math.max(0, moved.hp - damagePerSecond * dt) }
     : moved;
 
-  updateExplored(state.minimap, player, state.tileMap);
+  const visibility = computeVisibility(player, state.tileMap, visibilityMode, state.minimap);
   return {
     ...state,
     player,
+    visibility,
   };
 }
 
@@ -56,5 +70,14 @@ export function renderGame(
   viewportHeight: number,
   time: number,
 ) {
-  render(ctx, state.player, state.tileMap, viewportWidth, viewportHeight, time, state.minimap);
+  render(
+    ctx,
+    state.player,
+    state.tileMap,
+    viewportWidth,
+    viewportHeight,
+    time,
+    state.minimap,
+    state.visibility,
+  );
 }

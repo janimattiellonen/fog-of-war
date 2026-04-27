@@ -22,11 +22,19 @@ const KEY_BINDINGS: Record<string, Direction> = {
   '6': { dx: 1, dy: 0 },
 };
 
-export function createInputState() {
+export interface InputState {
+  keysDown: Set<string>;
+  pointer: { x: number; y: number } | null;
+  getMovement(): Direction;
+  getFacingAngle(viewportWidth: number, viewportHeight: number): number | null;
+}
+
+export function createInputState(): InputState {
   const keysDown = new Set<string>();
-  return {
+  const state: InputState = {
     keysDown,
-    getMovement(): Direction {
+    pointer: null,
+    getMovement() {
       let dx = 0;
       let dy = 0;
       for (const key of keysDown) {
@@ -43,5 +51,15 @@ export function createInputState() {
       }
       return { dx, dy };
     },
+    getFacingAngle(viewportWidth, viewportHeight) {
+      if (!state.pointer) return null;
+      const cx = viewportWidth / 2;
+      const cy = viewportHeight / 2;
+      const dx = state.pointer.x - cx;
+      const dy = state.pointer.y - cy;
+      if (dx === 0 && dy === 0) return null;
+      return Math.atan2(dy, dx);
+    },
   };
+  return state;
 }

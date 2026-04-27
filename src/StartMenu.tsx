@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import MapPreview from './MapPreview';
+import { type VisibilityMode, type GameSettings, loadSettings, saveSettings } from './game/settings';
 
 interface MapSize {
   cols: number;
@@ -8,6 +9,7 @@ interface MapSize {
 
 interface StartMenuProps {
   onStartGame: (mapFile: string) => void;
+  onSettingsChange?: (settings: GameSettings) => void;
 }
 
 function formatMapName(filename: string): string {
@@ -21,10 +23,12 @@ function formatMapName(filename: string): string {
   return base.charAt(0).toUpperCase() + base.slice(1);
 }
 
-export default function StartMenu({ onStartGame }: StartMenuProps) {
+export default function StartMenu({ onStartGame, onSettingsChange }: StartMenuProps) {
   const [maps, setMaps] = useState<string[]>([]);
   const [mapSizes, setMapSizes] = useState<Record<string, MapSize>>({});
   const [showMapSelect, setShowMapSelect] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [settings, setSettings] = useState<GameSettings>(loadSettings);
 
   useEffect(() => {
     fetch('/maps/maps.json')
@@ -77,19 +81,17 @@ export default function StartMenu({ onStartGame }: StartMenuProps) {
         Fog of War
       </h1>
 
-      {!showMapSelect ? (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <MenuButton onClick={handleStartNew} disabled={maps.length === 0}>
-            Start New Game
-          </MenuButton>
-          <MenuButton onClick={() => setShowMapSelect(true)} disabled={maps.length === 0}>
-            Select Map
-          </MenuButton>
-          <MenuButton onClick={() => window.open('/editor', '_blank')}>
-            Editor
-          </MenuButton>
-        </div>
-      ) : (
+      {showSettings ? (
+        <SettingsPanel
+          settings={settings}
+          onChange={(updated) => {
+            setSettings(updated);
+            saveSettings(updated);
+            onSettingsChange?.(updated);
+          }}
+          onBack={() => setShowSettings(false)}
+        />
+      ) : showMapSelect ? (
         <div style={{
           display: 'flex',
           flexDirection: 'column',
@@ -118,6 +120,21 @@ export default function StartMenu({ onStartGame }: StartMenuProps) {
 
           <MenuButton onClick={() => setShowMapSelect(false)}>
             Back
+          </MenuButton>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <MenuButton onClick={handleStartNew} disabled={maps.length === 0}>
+            Start New Game
+          </MenuButton>
+          <MenuButton onClick={() => setShowMapSelect(true)} disabled={maps.length === 0}>
+            Select Map
+          </MenuButton>
+          <MenuButton onClick={() => window.open('/editor', '_blank')}>
+            Editor
+          </MenuButton>
+          <MenuButton onClick={() => setShowSettings(true)}>
+            Settings
           </MenuButton>
         </div>
       )}
@@ -206,6 +223,82 @@ function MapCard({ mapFile, mapSize, onPlay }: {
           Edit
         </a>
       )}
+    </div>
+  );
+}
+
+function SettingsPanel({ settings, onChange, onBack }: {
+  settings: GameSettings;
+  onChange: (settings: GameSettings) => void;
+  onBack: () => void;
+}) {
+  const modes: VisibilityMode[] = ['circle', 'flashlight'];
+
+  return (
+    <div style={{
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      gap: 24,
+      minWidth: 300,
+    }}>
+      <h2 style={{
+        fontFamily: "'Georgia', serif",
+        fontSize: 28,
+        color: '#e8d5b5',
+        margin: 0,
+        letterSpacing: 2,
+      }}>
+        Settings
+      </h2>
+
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 8,
+        width: '100%',
+      }}>
+        <label style={{
+          color: '#998877',
+          fontSize: 14,
+          fontWeight: 600,
+          letterSpacing: 1,
+          textTransform: 'uppercase',
+        }}>
+          Visible area mode
+        </label>
+        <div style={{ display: 'flex', gap: 10 }}>
+          {modes.map((mode) => (
+            <button
+              key={mode}
+              onClick={() => onChange({ ...settings, visibilityMode: mode })}
+              style={{
+                flex: 1,
+                padding: '10px 16px',
+                fontSize: 15,
+                fontWeight: 500,
+                color: settings.visibilityMode === mode ? '#1a1a2e' : '#e8d5b5',
+                background: settings.visibilityMode === mode
+                  ? 'rgba(200, 150, 80, 0.85)'
+                  : 'rgba(255, 255, 255, 0.08)',
+                border: `1px solid ${settings.visibilityMode === mode
+                  ? 'rgba(200, 150, 80, 0.9)'
+                  : 'rgba(255, 255, 255, 0.15)'}`,
+                borderRadius: 6,
+                cursor: 'pointer',
+                textTransform: 'capitalize',
+                transition: 'background 0.2s, border-color 0.2s, color 0.2s',
+              }}
+            >
+              {mode}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <MenuButton onClick={onBack}>
+        Back
+      </MenuButton>
     </div>
   );
 }
