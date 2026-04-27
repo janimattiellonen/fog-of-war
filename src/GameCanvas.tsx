@@ -1,15 +1,17 @@
 import { useRef, useEffect, useState } from 'react';
 import { createInputState } from './game/input';
 import { type GameState, loadGameState, updateGame, renderGame } from './game/gameLoop';
+import type { VisibilityMode } from './game/settings';
 
 interface GameCanvasProps {
   mapFile: string;
   paused?: boolean;
   onEscape?: () => void;
   onGameOver?: () => void;
+  visibilityMode?: VisibilityMode;
 }
 
-export default function GameCanvas({ mapFile, paused, onEscape, onGameOver }: GameCanvasProps) {
+export default function GameCanvas({ mapFile, paused, onEscape, onGameOver, visibilityMode = 'circle' }: GameCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const gameStateRef = useRef<GameState | null>(null);
   const inputRef = useRef(createInputState());
@@ -19,6 +21,8 @@ export default function GameCanvas({ mapFile, paused, onEscape, onGameOver }: Ga
   onEscapeRef.current = onEscape;
   const onGameOverRef = useRef(onGameOver);
   onGameOverRef.current = onGameOver;
+  const visibilityModeRef = useRef(visibilityMode);
+  visibilityModeRef.current = visibilityMode;
   const gameOverFiredRef = useRef(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -54,15 +58,19 @@ export default function GameCanvas({ mapFile, paused, onEscape, onGameOver }: Ga
     const handleKeyUp = (e: KeyboardEvent) => {
       inputRef.current.keysDown.delete(e.key);
     };
+    const handleMouseMove = (e: MouseEvent) => {
+      inputRef.current.pointer = { x: e.clientX, y: e.clientY };
+    };
 
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('keyup', handleKeyUp);
+    window.addEventListener('mousemove', handleMouseMove);
 
     let animationId: number;
     let cancelled = false;
     let lastTime = 0;
 
-    loadGameState(`/maps/${mapFile}`).then((state) => {
+    loadGameState(`/maps/${mapFile}`, '/maps/tiles.conf', visibilityModeRef.current).then((state) => {
       if (cancelled) {
         return;
       }
@@ -80,7 +88,8 @@ export default function GameCanvas({ mapFile, paused, onEscape, onGameOver }: Ga
           const dt = lastTime === 0 ? 0 : (time - lastTime) / 1000;
           lastTime = time;
           const movement = inputRef.current.getMovement();
-          gameStateRef.current = updateGame(gameStateRef.current, movement, dt);
+          const facingAngle = inputRef.current.getFacingAngle(window.innerWidth, window.innerHeight);
+          gameStateRef.current = updateGame(gameStateRef.current, movement, dt, visibilityModeRef.current, facingAngle);
           renderGame(ctx, gameStateRef.current, window.innerWidth, window.innerHeight, time);
           if (gameStateRef.current.player.hp <= 0 && !gameOverFiredRef.current) {
             gameOverFiredRef.current = true;
@@ -102,6 +111,7 @@ export default function GameCanvas({ mapFile, paused, onEscape, onGameOver }: Ga
       window.removeEventListener('resize', resize);
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
+      window.removeEventListener('mousemove', handleMouseMove);
     };
   }, [mapFile]);
 
@@ -130,6 +140,7 @@ export default function GameCanvas({ mapFile, paused, onEscape, onGameOver }: Ga
           left: 0,
           width: '100vw',
           height: '100vh',
+          cursor: paused ? 'default' : 'none',
         }}
       />
     </>
